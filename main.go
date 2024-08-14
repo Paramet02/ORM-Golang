@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"time"
+	"strconv"
   )
 
 // config database
@@ -62,11 +63,78 @@ func main() {
 	})
 	
 	app.Get("/menu/:id" , func(c *fiber.Ctx) error {
-		id := c.Params("id")
+		id , err := strconv.Atoi(c.Params("id"))
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
 		Menu := GetMenu(db , id)
+
+		return c.JSON(Menu)
 	})
 
-	app.Listen(":8000")
+	app.Post("/menu" , func(c *fiber.Ctx) error {
+		menu := new(Menu)
 
-	
+		err := c.BodyParser(menu)
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		err = CreateMenu(db, menu)
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+		return c.JSON(fiber.Map{
+			"Message":"CreateMenu successful",
+		})
+	})
+
+	app.Put("/menu/:id" , func(c *fiber.Ctx) error {
+		id , err := strconv.Atoi(c.Params("id"))
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		menu := new(Menu)
+
+		err = c.BodyParser(menu)
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		menu.ID = uint(id)
+
+		err = UpdateMenu(db , menu)
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		return c.JSON(fiber.Map{
+			"message" : "update successful",
+		})
+	})
+
+	app.Delete("/menu/:id", func(c *fiber.Ctx) error {
+		id , err := strconv.Atoi(c.Params("id"))
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		err = Delete(db , id)
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		return c.JSON(fiber.Map{
+			"message" : "Delete successful",
+		})
+	})
+	app.Listen(":8000")
 }

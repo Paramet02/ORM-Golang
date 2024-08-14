@@ -13,12 +13,12 @@ type Menu struct {
 	Category string `json:"category"`
 }
 
-func CreateMenu(db *gorm.DB, menu *Menu) {
+func CreateMenu(db *gorm.DB, menu *Menu) error{
 	result := db.Create(menu)
 	if result.Error != nil {
-	  log.Fatalf("Error creating Menu : %v", result.Error)
+	  return result.Error
 	}
-	fmt.Println("Menu created successfully")
+	return nil
 }
 
 func GetMenu(db *gorm.DB, id int) *Menu {
@@ -44,23 +44,25 @@ func GetMenus(db *gorm.DB) []Menu {
 }
 
 // Update
-func UpdateMenu(db *gorm.DB, menu *Menu) {
-	result := db.Save(&menu)
+func UpdateMenu(db *gorm.DB, menu *Menu) error{
+	result := db.Model(&menu).Updates(&menu)
 	if result.Error != nil {
-		log.Fatalf("Error Update Menu : %v", result.Error)
+		return result.Error
 	}
-	fmt.Println("Menu update successfully")
+
+	return nil
 }
 
 
 // soft Del is Didn't actually delete it. but is still in the database.
-func DeleteMenu(db *gorm.DB, id int) {
+func DeleteMenu(db *gorm.DB, id int) error {
 	var menu Menu
 	result := db.Delete(&menu, id)
 	if result.Error != nil {
-	  log.Fatalf("Error deleting book: %v", result.Error)
+	  return result.Error
 	}
-	fmt.Println("Book deleted successfully")
+	
+	return nil
 }
 
 // Hard Del
@@ -68,9 +70,8 @@ func Delete(db *gorm.DB, id int) error {
 	var menu Menu
 	result := db.Unscoped().Delete(&menu, id)
 	if result.Error != nil {
-	  log.Fatalf("Error deleting book: %v", result.Error)
+	  return result.Error
 	}
-	fmt.Println("Book deleted successfully")
 
 	return nil
 }
