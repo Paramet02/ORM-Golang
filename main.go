@@ -2,15 +2,14 @@ package main
 
 import (
 	"fmt"
+	"github.com/gofiber/fiber/v2"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"github.com/gofiber/fiber/v2"
 	"log"
 	"os"
 	"time"
-	"strconv"
-  )
+)
 
 // config database
 const (
@@ -31,12 +30,12 @@ func main() {
 	newLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 		logger.Config{
-		SlowThreshold: time.Second, // Slow SQL threshold
-		LogLevel:      logger.Info, // Log level
-		Colorful:      true,        // Enable color
+			SlowThreshold: time.Second, // Slow SQL threshold
+			LogLevel:      logger.Info, // Log level
+			Colorful:      true,        // Enable color
 		},
 	)
-	
+
 	// connect database
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: newLogger, // add Logger
@@ -50,91 +49,44 @@ func main() {
 	println(db)
 	fmt.Println("Connect Database successful")
 
-	// create database 
+	// create database
 	// func autoMigrate can not del database but only create database
-	// db.AutoMigrate(&Menu{})
-
+	db.AutoMigrate(&Menu{}, &User{})
 
 	// setup fiber
 	app := fiber.New()
-	
+
+	// check Middleware
+	app.Use("/menus", AuthRequired)
+
+	// api CRUD
 	app.Get("/menus", func(c *fiber.Ctx) error {
-		return c.JSON(GetMenus(db))
-	})
-	
-	app.Get("/menu/:id" , func(c *fiber.Ctx) error {
-		id , err := strconv.Atoi(c.Params("id"))
-		if err != nil {
-			return c.SendStatus(fiber.StatusBadRequest)
-		}
-		Menu := GetMenu(db , id)
-
-		return c.JSON(Menu)
+		return GetMenus(db, c)
 	})
 
-	app.Post("/menu" , func(c *fiber.Ctx) error {
-		menu := new(Menu)
-
-		err := c.BodyParser(menu)
-
-		if err != nil {
-			return c.SendStatus(fiber.StatusBadRequest)
-		}
-
-		err = CreateMenu(db, menu)
-
-		if err != nil {
-			return c.SendStatus(fiber.StatusBadRequest)
-		}
-		return c.JSON(fiber.Map{
-			"Message":"CreateMenu successful",
-		})
+	app.Get("/menus/:id", func(c *fiber.Ctx) error {
+		return GetMenu(db, c)
 	})
 
-	app.Put("/menu/:id" , func(c *fiber.Ctx) error {
-		id , err := strconv.Atoi(c.Params("id"))
-
-		if err != nil {
-			return c.SendStatus(fiber.StatusBadRequest)
-		}
-
-		menu := new(Menu)
-
-		err = c.BodyParser(menu)
-
-		if err != nil {
-			return c.SendStatus(fiber.StatusBadRequest)
-		}
-
-		menu.ID = uint(id)
-
-		err = UpdateMenu(db , menu)
-
-		if err != nil {
-			return c.SendStatus(fiber.StatusBadRequest)
-		}
-
-		return c.JSON(fiber.Map{
-			"message" : "update successful",
-		})
+	app.Post("/menus", func(c *fiber.Ctx) error {
+		return CreateMenu(db, c)
 	})
 
-	app.Delete("/menu/:id", func(c *fiber.Ctx) error {
-		id , err := strconv.Atoi(c.Params("id"))
-
-		if err != nil {
-			return c.SendStatus(fiber.StatusBadRequest)
-		}
-
-		err = Delete(db , id)
-
-		if err != nil {
-			return c.SendStatus(fiber.StatusBadRequest)
-		}
-
-		return c.JSON(fiber.Map{
-			"message" : "Delete successful",
-		})
+	app.Put("/menus/:id", func(c *fiber.Ctx) error {
+		return UpdateMenu(db, c)
 	})
-	app.Listen(":8000")
+
+	app.Delete("/menus/:id", func(c *fiber.Ctx) error {
+		return DeleteMenu(db, c)
+	})
+
+	// User register / login
+	app.Post("/register", func(c *fiber.Ctx) error {
+		return CreateUser(db, c)
+	})
+
+	app.Post("/login", func(c *fiber.Ctx) error {
+		return LoginUser(db, c)
+	})
+	app.Listen(":8080")
 }

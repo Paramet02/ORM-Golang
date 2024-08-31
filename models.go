@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gorm.io/gorm"
 	"log"
+	"github.com/gofiber/fiber/v2"
 )
 
 type Menu struct {
@@ -13,86 +14,113 @@ type Menu struct {
 	Category string `json:"category"`
 }
 
-func CreateMenu(db *gorm.DB, menu *Menu) error{
+func CreateMenu(db *gorm.DB, c *fiber.Ctx) error {
+	menu := new(Menu)
+
+	err := c.BodyParser(menu)
+	if err != nil {
+		return c.SendStatus(fiber.StatusBadRequest)
+	}
+
 	result := db.Create(menu)
 	if result.Error != nil {
-	  return result.Error
+	  return c.SendStatus(fiber.StatusBadRequest)
 	}
-	return nil
+
+	return c.JSON(fiber.Map{
+		"Message": "CreateMenu successful",
+	})
 }
 
-func GetMenu(db *gorm.DB, id int) *Menu {
+func GetMenu(db *gorm.DB, c *fiber.Ctx) error {
+	id := c.Params("id")
+
 	var menu Menu
+	
 	result := db.First(&menu , id)
 	if result.Error != nil {
 		log.Fatalf("Error Get Menu : %v", result.Error)
 	}
 	fmt.Println("Get Menu successfully")
 
-	return &menu
+	return c.JSON(menu)
 }
 
-func GetMenus(db *gorm.DB) []Menu {
+func GetMenus(db *gorm.DB , c *fiber.Ctx) error {
 	var menus []Menu
 	result := db.Find(&menus)
+
 	if result.Error != nil {
 		log.Fatalf("Error Get Menu : %v", result.Error)
 	}
-	fmt.Println("Get Menu successfully")
 
-	return menus
+	return c.JSON(menus)
 }
 
 // Update
-func UpdateMenu(db *gorm.DB, menu *Menu) error{
-	result := db.Model(&menu).Updates(&menu)
-	if result.Error != nil {
-		return result.Error
+func UpdateMenu(db *gorm.DB, c *fiber.Ctx) error {
+	id := c.Params("id")
+	
+	menu := new(Menu)
+	
+	db.First(&menu, id)
+	if err := c.BodyParser(menu); err != nil {
+	  return c.SendStatus(fiber.StatusBadRequest)
 	}
-
-	return nil
+	db.Save(&menu)
+	return c.JSON(menu)
 }
 
 
 // soft Del is Didn't actually delete it. but is still in the database.
-func DeleteMenu(db *gorm.DB, id int) error {
+func DeleteMenu(db *gorm.DB, c *fiber.Ctx) error {
+	id := c.Params("id")
+
 	var menu Menu
+
 	result := db.Delete(&menu, id)
 	if result.Error != nil {
-	  return result.Error
+	  return c.SendStatus(fiber.StatusBadRequest)
 	}
 	
-	return nil
+	return c.JSON(fiber.Map{
+		"message ": "Del successful",
+	})
 }
 
 // Hard Del
-func Delete(db *gorm.DB, id int) error {
+func Delete(db *gorm.DB, c *fiber.Ctx) error {
+	id := c.Params("id")
+
 	var menu Menu
+
 	result := db.Unscoped().Delete(&menu, id)
 	if result.Error != nil {
-	  return result.Error
+	  return c.SendStatus(fiber.StatusBadRequest)
 	}
 
-	return nil
+	return c.JSON(fiber.Map{
+		"message ": "Del successful",
+	})
 }
 
 // Get by Where 
 // Return slice because easy and safety
-func GetMenuByName(db *gorm.DB , NameMenu string) []Menu {
-	var menu []Menu
-	result := db.Where("Name = ?", NameMenu).Find(&menu)
-	if result.Error != nil {
-		return nil
-	}
+// func GetMenuByName(db *gorm.DB , NameMenu string) []Menu {
+// 	var menu []Menu
+// 	result := db.Where("Name = ?", NameMenu).Find(&menu)
+// 	if result.Error != nil {
+// 		return nil
+// 	}
 
-	return menu
-}
+// 	return menu
+// }
 
-func getMenuSorted(db *gorm.DB) ([]Menu, error) {
-	var menu []Menu
-	result := db.Order("created_at desc").Find(&menu)
-	if result.Error != nil {
-	  return nil , result.Error
-	}
-	return menu , nil
-}
+// func getMenuSorted(db *gorm.DB) ([]Menu, error) {
+// 	var menu []Menu
+// 	result := db.Order("created_at desc").Find(&menu)
+// 	if result.Error != nil {
+// 	  return nil , result.Error
+// 	}
+// 	return menu , nil
+// }
